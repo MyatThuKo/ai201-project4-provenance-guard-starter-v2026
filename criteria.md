@@ -42,63 +42,82 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
+
+## 1. False-Positive Rate
 
 <!-- Your criterion. It must name a number. -->
 
-
+Of 10 pieces I wrote myself, at most 1 should be labeled high-confidence AI in each of the three evaluation trials.
 
 **Why this target:**
-
-
+False accusations can damage a writer's credibility, especially when their work is used in academic or professional settings. I want to prioritize protecting human writers over detecting every AI-generated submission. Allowing at most 1 false positive in 10 is my initial benchmark, although a real production system would require a substantially lower false-positive rate.
 
 ---
 
-## 2.
+## 2. Score Separation
 
 <!-- Your criterion. -->
 
+The average combined AI-likelihood score of 10 AI-generated writing samples should be at least 0.35 higher than the average score of 10 human-written samples in each of the three evaluation trials.
 
+The human samples will be writing I produced myself. The AI samples will be generated using one identified language model with the same set of general writing prompts. I will document the model and prompts before testing. I will be using the same 10 samples from Criterion #1.
 
 **Why this target:**
 
-
+The two signals should produce meaningfully different scores for AI-generated and human-written text. A difference of 0.35 is a challenging initial target for measuring separation between the two groups. However, a difference in averages does not guarantee accurate individual classifications, so I will evaluate this alongside the false-positive and label-coverage criteria.
 
 ---
 
-## 3.
+## 3. Label Coverage
 
 <!-- Your criterion. -->
 
+Of 3 predetermined text samples submitted through `POST /submit` — one known human-written, one AI-generated, and one intentionally borderline — all 3 should produce different label variants: high-confidence human, unsure, and high-confidence AI, respectively, in each of the three evaluation trials.
 
+The test samples must be selected before running the detector, without adjusting them based on the resulting scores.
 
 **Why this target:**
-
-
+I want to verify that the complete service can produce all three labels from actual writing, rather than only checking the threshold logic with manually selected scores. This is especially important for the unsure label, which allows the system to acknowledge uncertainty instead of forcing a confident classification.
 
 ---
 
-## 4.
+## 4. Appeal Reliability
 
 <!-- Your criterion. -->
 
+For each evaluation trial, I will create 5 new submissions and submit one valid appeal for each existing `content_id`.
 
+All 5 appeals must return HTTP 200 with status: "under_review" in the response and produce a corresponding appeal entry in the audit log. The submission's effective status must also be under_review.
+
+Additionally, submitting an appeal with a nonexistent `content_id` must return HTTP 404 without adding an appeal entry to the audit log.
+
+All 6 checks must pass in each of the three evaluation trials.
 
 **Why this target:**
-
-
+Writers need a reliable way to challenge incorrect classifications. Checking both the API response and audit log ensures that an appeal is actually recorded rather than merely acknowledged. Rejecting nonexistent content IDs also prevents invalid appeals from being stored.
 
 ---
 
-## 5.
+## 5. Bad Input Handling
 
 <!-- Your criterion. -->
 
+All 7 invalid submission requests must return the expected HTTP error code and a JSON error message. After each invalid request, GET /health must still return HTTP 200.
 
+The seven invalid cases are:
+
+1. Missing text — HTTP 400
+2. Empty text — HTTP 400
+3. Missing creator_id — HTTP 400
+4. Numeric text instead of a string — HTTP 400
+5. Text exceeding 10,000 characters — HTTP 413
+6. Whitespace-only text — HTTP 400
+7. Invalid JSON request body — HTTP 400.
+
+All 7 cases must pass in each of the three evaluation trials.
 
 **Why this target:**
-
-
+The service should validate incoming requests before running expensive model inference. Invalid input should produce predictable error responses without crashing the application or leaving it unresponsive. Testing the health endpoint afterward verifies that the service continues operating correctly.
 
 ---
 

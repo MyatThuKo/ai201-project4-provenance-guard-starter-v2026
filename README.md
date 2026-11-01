@@ -39,7 +39,15 @@
 <!-- The path a submission takes, from arriving to the label a reader sees.
      Six or seven steps — this is the trace you wrote in Milestone 1. -->
 
+The Provenance Guard service analyzes submitted writing using two independent signals and produces a reader-facing label.
 
+1. Receive submission: A writer sends a POST /submit request containing text and creator_id.
+2. Validate the request: The service checks that the required fields exist and contain valid, nonempty strings. If validation fails, it returns an appropriate error response.
+3. Generate a content ID: The service generates a unique content_id to identify the submission and connect it to future appeals.
+4. Analyze the text: detector.py measures the text's predictability using a local language model, while stylometry.py analyzes writing characteristics such as sentence-length variation, vocabulary diversity, and punctuation frequency.
+5. Combine the signals: scoring.py::combine_signals() combines both normalized scores into one AI-likelihood score between 0 and 1.
+6. Generate a label: scoring.py::score_to_label() uses the combined score and configured thresholds to select one of three labels: high-confidence human, unsure, or high-confidence AI.
+7. Record and return the decision: audit.log_decision() records the results, including the two signal scores, combined score, and label. The service returns structured JSON containing the content_id, guess, confidence, label, and individual signal scores.
 
 ---
 
@@ -53,19 +61,27 @@
 
 ### Signal one — the model signal
 
-**What it measures:**
+**What it measures:** The model signal measures how predictable the submitted text is to a local language model. The detector uses perplexity to measure how surprising the sequence of words is to the model. Lower perplexity means the text is more predictable. The detector converts this measurement into a normalized score between 0 and 1, where higher scores indicate stronger AI-like patterns.
 
-**Why that might differ between human and AI writing:**
+**Why that might differ between human and AI writing:** AI-generated text may follow common language patterns because language models learn statistical relationships between words and sentences. Human writing may contain more unexpected word choices, unusual sentence structures, and personal experiences. However, this is only a statistical tendency and not a reliable distinction between a human and an AI authorship.
 
-**What it can't see:**
+**What it can't see:** The model cannot determine who actually wrote the text. A human might write highly predictable content, such as a formal email, technical documentation, or a simple essay. This could receive a high AI-likelihood score. Similarly, AI-generated writing that uses unexpected wording or has been heavily edited may receive a low AI-likelihood score. The model also does not have access to the writer's drafting history or other evidence of authorship.
 
 ### Signal two — the style signal
 
-**What it measures:**
+**What it measures:** The stylometry signal measures the structure and statistical characteristics of writing rather than relying on a language model's assessment of predictability.
 
-**Why that might differ between human and AI writing:**
+It examines three properties:
 
-**What it can't see:**
+- Sentence-length spread: How much sentence length varies throughout the text.
+- Type-token ratio: The number of unique words relative to the total number of words, measuring vocabulary diversity.
+- Punctuation density: How frequently punctuation appears relative to the length of the text.
+
+These measurements are combined into a normalized AI-likelihood score between 0 and 1.
+
+**Why that might differ between human and AI writing:** Some AI-generated writing can be consistently structured, with similar sentence lengths and repeated vocabulary patterns. Human writing can have greater variation in sentence structure, word choices, and punctuation because of individual writing styles. These differences may provide additional evidence to complement the model signal although none of these properties is exclusive to either human or AI writing.
+
+**What it can't see:** Stylometry cannot understand the meaning of the text or verify who wrote it. A human writer may intentionally use consistent sentence lengths and vocabulary, especially in formal or technical writing. An AI model can also be prompted to use varied sentence lengths, diverse vocabulary, and unusual punctuation. Stylometry may be unreliable for very short submissions because there is insufficient text to measure meaningful variation.
 
 ### The combining rule
 
@@ -83,9 +99,129 @@
 
 **A case where my two signals split, and what my rule does with it:**
 
-
-
 ---
+
+## Design Notes
+
+### False-Positive Scenario
+
+A student submits a formal essay that they wrote entirely on their own. Because formal academic writing often follows predictable patterns, the model signal returns a high AI-likelihood score of 0.75. The stylometry signal also returns 0.65 because the essay uses consistent sentence lengths and structured vocabulary.
+
+Assuming equal weighting, the combined score is 0.70. With the starter's `AI_THRESHOLD` of 0.65, the system would classify the essay as high-confidence AI, even though it was written by a human.
+
+This is a false positive. The student sees a label suggesting their work may be AI-generated, which could unfairly damage their credibility.
+
+The student can submit an appeal using `POST /appeal`, providing their `content_id` and an explanation. The system records the appeal and changes the submission's status to `under_review`. However, the appeal does not automatically recheck the writing or correct the original classification.
+
+To reduce false positives, I would consider raising the AI threshold from 0.65 to 0.80, creating a wider unsure range. This reduces the chance of incorrectly labeling human writing as AI-generated, but it may also cause more genuinely AI-generated content to receive an unsure label.
+
+The priority is to avoid making confident accusations when the evidence is insufficient.
+
+### API Contracts
+
+#### POST /submit
+
+**Purpose:** Analyze submitted writing and return a prediction.
+
+**Request fields:**
+
+| Field        | Type   | Requirement                                                    |
+| ------------ | ------ | -------------------------------------------------------------- |
+| `text`       | String | Required, nonempty, maximum 10,000 characters (proposed limit) |
+| `creator_id` | String | Required, nonempty                                             |
+
+**Example request:**
+
+```json
+{
+  "text": "This is my original essay.",
+  "creator_id": "student_123"
+}
+```
+
+**Response fields:**
+
+| Field         | Type   | Description                               |
+| ------------- | ------ | ----------------------------------------- |
+| `content_id`  | String | Unique submission identifier              |
+| `guess`       | String | One of `human`, `ai` and `unsure`         |
+| `confidence`  | Float  | Score between 0 and 1                     |
+| `label`       | String | One of three reader-facing label variants |
+| `model_score` | Float  | Language model score between 0 and 1      |
+| `style_score` | Float  | Stylometry score between 0 and 1          |
+
+**Example successful response (HTTP 200):**
+
+```json
+{
+  "content_id": "abc-123",
+  "guess": "ai",
+  "confidence": 0.85,
+  "label": "This writing shows patterns commonly associated with AI-generated content, but this assessment is not proof of authorship.",
+  "model_score": 0.75,
+  "style_score": 0.65
+}
+```
+
+**Error handling:**
+
+- `400 Bad Request` — Missing fields, empty text, invalid JSON, or incorrect data types.
+- `413 Content Too Large` — Text exceeds 10,000 characters.
+- `500 Internal Server Error` — Unexpected processing failure.
+
+Example error response:
+
+```json
+{
+  "error": "text is required and must be a non-empty string"
+}
+```
+
+#### POST /appeal
+
+**Purpose:** Allow a writer to challenge a classification.
+
+**Request fields:**
+
+| Field        | Type   | Requirement                      |
+| ------------ | ------ | -------------------------------- |
+| `content_id` | String | Required, existing submission ID |
+| `reasoning`  | String | Required, nonempty explanation   |
+
+**Example request:**
+
+```json
+{
+  "content_id": "abc-123",
+  "reasoning": "I wrote this essay myself."
+}
+```
+
+**Example successful response (HTTP 200):**
+
+```json
+{
+  "content_id": "abc-123",
+  "status": "under_review",
+  "message": "Appeal recorded successfully."
+}
+```
+
+**Error handling:**
+
+- `400 Bad Request` — Missing or invalid fields.
+- `404 Not Found` — No submission exists for the provided `content_id`.
+- `500 Internal Server Error` — Unexpected processing failure.
+
+Example error response:
+
+```json
+{
+  "error": "content_id not found"
+}
+```
+
+The appeal endpoint records the writer's explanation and marks the submission for review. It does not automatically rerun the AI detector.
 
 ## Label Variants
 

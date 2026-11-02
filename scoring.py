@@ -65,38 +65,37 @@ def combine_signals(model_score: float, style_score: float) -> float:
     return round(min(max(score, 0.0), 1.0), 4)
 
 
+
 def score_to_label(score: float) -> tuple[str, str]:
     """
-    Turn a score into a guess and the text a reader actually sees.
-    ← TODO (Milestone 5)
+    Convert a combined AI-likelihood score into a prediction
+    and a reader-facing label.
 
     Returns:
-        (guess, label_text) — where `guess` is a short machine-readable string
-        like "ai" / "human" / "unsure", and `label_text` is the full sentence
-        shown to a person.
-
-    ⚠️ Write the label text for someone who has never heard the word
-    "threshold".
-
-        ✗ "human, 0.81 confidence"
-        ✓ "We think this was probably written by a person."
-
-    All three labels have to be **reachable**. If no score can produce one of
-    them, your ranges have a gap — and Milestone 5 asks you to submit text that
-    produces each one, which is how you'd find out.
-
-    The hardest one to write is "unsure". It has to admit uncertainty without
-    sounding like an accusation, because the person reading it may well have
-    written every word themselves. Your breakout asks your group what they'd
-    think if they got it on their own work. That question is the whole
-    milestone.
+        A tuple containing the guess and label text.
     """
-    # TODO: replace this — thresholds are in config.py
     if score >= config.AI_THRESHOLD:
-        return "ai", "PLACEHOLDER — write the high-confidence AI label."
+        return (
+            "ai",
+            "This writing shows patterns associated with AI-generated "
+            "text. This assessment is not proof of AI authorship "
+            "and may be incorrect."
+        )
+
     if score <= config.HUMAN_THRESHOLD:
-        return "human", "PLACEHOLDER — write the high-confidence human label."
-    return "unsure", "PLACEHOLDER — write the unsure label."
+        return (
+            "human",
+            "This writing appears to have been written by a person, "
+            "although its origin cannot be verified automatically."
+        )
+
+    return (
+        "unsure",
+        "We cannot reliably determine whether this writing was "
+        "written by a person or generated with AI. This result "
+        "should not be treated as evidence of misconduct."
+    )
+
 
 
 def label_ranges() -> list[tuple[str, str]]:

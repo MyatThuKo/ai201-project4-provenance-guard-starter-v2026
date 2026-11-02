@@ -180,7 +180,7 @@ The priority is to avoid making confident accusations when the evidence is insuf
 {
   "content_id": "abc-123",
   "guess": "ai",
-  "confidence": 0.85,
+  "confidence": 0.69,
   "label": "This writing shows patterns commonly associated with AI-generated content, but this assessment is not proof of authorship.",
   "model_score": 0.75,
   "style_score": 0.65
@@ -254,18 +254,31 @@ The appeal endpoint records the writer's explanation and marks the submission fo
 
      Write them for someone who has never heard the word "threshold". -->
 
-| Label | Score range | The exact text a reader sees |
-|---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+**High-confidence human — 0.00 to 0.35 (inclusive)**
+
+"This writing appears to have been written by a person, although its origin cannot be verified automatically."
+
+**Unsure — above 0.35 and below 0.65**
+
+"We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct."
+
+**High-confidence AI — 0.65 to 1.00 (inclusive)**
+
+"This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect."
+
+| Label                 | Score range           | The exact text a reader sees                                                                                                                                 |
+| --------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| high-confidence human | `0.00 ≤ score ≤ 0.35` | This writing appears to have been written by a person, although its origin cannot be verified automatically.                                                 |
+| unsure                | `0.35 < score < 0.65` | We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct. |
+| high-confidence AI    | `0.65 ≤ score ≤ 1.00` | This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.                           |
 
 **Why I worded the "unsure" one this way:**
+
 <!-- It's the hardest of the three. It has to admit uncertainty without
      sounding like an accusation, because the person reading it may well have
      written every word themselves. -->
 
-
+I worded the unsure label to acknowledge that the system cannot reliably determine who wrote the content without implying that the writer did anything wrong. My experiments showed that even human-written text can receive relatively high AI-likelihood scores. I included the statement about misconduct because an uncertain prediction should not be treated as evidence of cheating or dishonesty.
 
 ---
 
@@ -292,12 +305,32 @@ $ curl -X POST http://127.0.0.1:5000/submit \
 
 ```json
 {
-  "confidence": 0.6964,
-  "content_id": "2bb8f5f3-e974-4686-8b50-06c4e92e0dbf",
-  "guess": "unsure",
-  "label": "The writing has not yet been fully evaluated.",
-  "model_score": 0.6964,
-  "style_score": null
+  "confidence": 0.7336,
+  "content_id": "73244e70-6ba2-40bd-be29-eea9c83018a2",
+  "guess": "ai",
+  "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+  "model_score": 0.7218,
+  "style_score": 0.7415
+}
+```
+
+```bash
+$ curl -i -X POST "http://127.0.0.1:5000/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Mr. Bennet was so odd a mixture of quick parts, sarcastic humour, reserve, and caprice, that the experience of three-and-twenty years had been insufficient to make his wife understand his character. Her mind was less difficult to develop. She was a woman of mean understanding, little information, and uncertain temper. When she was discontented, she fancied herself nervous. The business of her life was to get her daughters married; its solace was visiting and news.",
+    "creator_id": "Jane_Austen"
+  }'
+```
+
+```json
+{
+  "confidence": 0.2856,
+  "content_id": "1ee14c59-db82-4b9b-8a81-17ace5caf08f",
+  "guess": "human",
+  "label": "This writing appears to have been written by a person, although its origin cannot be verified automatically.",
+  "model_score": 0.4585,
+  "style_score": 0.1703
 }
 ```
 
@@ -306,55 +339,124 @@ $ curl -X POST http://127.0.0.1:5000/submit \
 ```bash
 $ curl -X POST http://127.0.0.1:5000/appeal \
   -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+  -d '{
+    "content_id": "73244e70-6ba2-40bd-be29-eea9c83018a2",
+    "reasoning": "I wrote this myself and would like it reviewed."
+  }'
 ```
 
 ```json
-
+{
+  "content_id": "73244e70-6ba2-40bd-be29-eea9c83018a2",
+  "message": "Your appeal has been recorded.",
+  "status": "under_review"
+}
 ```
 
 **What the log shows afterwards**
 
 ```bash
-$ curl "http://127.0.0.1:5000/log?limit=3"
+$ curl "http://127.0.0.1:5000/log?limit=10"
 ```
 
 ```json
 {
-  "count": 3,
+  "count": 10,
   "entries": [
     {
-      "combined_score": null,
-      "content_id": "65085f5f-9047-432e-bc25-1a3cfa1244b2",
+      "combined_score": 0.5412,
+      "content_id": "9cf72ea2-a057-4de8-99fb-685c81b71cde",
       "creator_id": "writer_123",
       "guess": "unsure",
       "label": "The writing has not yet been fully evaluated.",
-      "model_score": 0.6964,
+      "model_score": 0.6981,
       "status": "decided",
-      "style_score": null,
-      "timestamp": "2026-11-02T00:03:30+00:00"
+      "style_score": 0.4366,
+      "timestamp": "2026-11-02T00:20:21+00:00"
     },
     {
-      "combined_score": null,
-      "content_id": "7e25d3f7-f3ec-4007-8871-c2ab66715a68",
-      "creator_id": "writer_321",
+      "combined_score": 0.5665,
+      "content_id": "1c9aa50d-6aab-4402-9a79-ef0c0ae4c417",
+      "creator_id": "milestone4_test",
       "guess": "unsure",
       "label": "The writing has not yet been fully evaluated.",
+      "model_score": 0.7206,
+      "status": "decided",
+      "style_score": 0.4638,
+      "timestamp": "2026-11-02T00:36:13+00:00"
+    },
+    {
+      "content_id": "1c9aa50d-6aab-4402-9a79-ef0c0ae4c417",
+      "creator_id": "milestone4_test",
+      "event": "appeal",
+      "reasoning": "I wrote this content myself and would like to request a review.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T00:53:21+00:00"
+    },
+    {
+      "content_id": "1c9aa50d-6aab-4402-9a79-ef0c0ae4c417",
+      "creator_id": "milestone4_test",
+      "event": "appeal",
+      "reasoning": "I wrote this content myself and would like to request a review.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T00:54:01+00:00"
+    },
+    {
+      "content_id": "1c9aa50d-6aab-4402-9a79-ef0c0ae4c417",
+      "creator_id": "milestone4_test",
+      "event": "appeal",
+      "reasoning": "I wrote this content myself and would like to request a review.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T00:56:22+00:00"
+    },
+    {
+      "combined_score": 0.7336,
+      "content_id": "73244e70-6ba2-40bd-be29-eea9c83018a2",
+      "creator_id": "writer_321",
+      "guess": "ai",
+      "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
       "model_score": 0.7218,
       "status": "decided",
-      "style_score": null,
-      "timestamp": "2026-11-02T00:09:52+00:00"
+      "style_score": 0.7415,
+      "timestamp": "2026-11-02T01:00:20+00:00"
     },
     {
-      "combined_score": null,
-      "content_id": "2bb8f5f3-e974-4686-8b50-06c4e92e0dbf",
-      "creator_id": "writer_123",
+      "content_id": "73244e70-6ba2-40bd-be29-eea9c83018a2",
+      "creator_id": "writer_321",
+      "event": "appeal",
+      "reasoning": "I wrote this myself and would like it reviewed.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T01:45:10+00:00"
+    },
+    {
+      "combined_score": 0.6398,
+      "content_id": "8d3aaa5f-d7f5-4f06-965f-855b7cd72a25",
+      "creator_id": "self-writing",
       "guess": "unsure",
-      "label": "The writing has not yet been fully evaluated.",
+      "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
       "model_score": 0.6964,
       "status": "decided",
-      "style_score": null,
-      "timestamp": "2026-11-02T00:12:40+00:00"
+      "style_score": 0.602,
+      "timestamp": "2026-11-02T01:46:27+00:00"
+    },
+    {
+      "combined_score": 0.2856,
+      "content_id": "1ee14c59-db82-4b9b-8a81-17ace5caf08f",
+      "creator_id": "Jane_Austen",
+      "guess": "human",
+      "label": "This writing appears to have been written by a person, although its origin cannot be verified automatically.",
+      "model_score": 0.4585,
+      "status": "decided",
+      "style_score": 0.1703,
+      "timestamp": "2026-11-02T01:47:48+00:00"
+    },
+    {
+      "content_id": "73244e70-6ba2-40bd-be29-eea9c83018a2",
+      "creator_id": "writer_321",
+      "event": "appeal",
+      "reasoning": "I disagree with this classification and would like to request a review.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T01:57:47+00:00"
     }
   ]
 }
@@ -366,15 +468,15 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- _What I asked for:_ I asked Claude to check whether I have added all the implementation and examples needed inside README.md for Unit 7.
+- _What came back:_ Claude pointed out that I do not currently have evidence that all three labels can be reached and that I am missing "human" label.
+- _What I changed:_ I searched online and took a paragraph from `Pride and Prejudice, Chapter 1 — Jane Austen (1813)` to test whether my implementation is correctly identifying the texts written by a human.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- _What I asked for:_ I asked Claude to review my stylometry.py implementations, particularly `punctuation_density()` and how to validate the style signal.
+- _What came back:_ It pointed out that apostrophes in contractions and hyphens in compound words were being counted as stylistic punctuation. It suggested refining the punctuation matching logic and testing the measurements separately.
+- _What I changed:_ I updated `punctuation_density()` to exclude punctuation within words and improved how `style_signal()` handles submissions with fewer than two usable sentences. I also tested the function with different writing samples.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 

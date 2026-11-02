@@ -31,7 +31,7 @@ from flask import Flask, jsonify, request
 import audit
 import config
 from detector import DetectorUnavailable, model_signal
-from scoring import combine_signals
+from scoring import combine_signals, score_to_label
 from stylometry import style_signal
 
 app = Flask(__name__)
@@ -157,8 +157,7 @@ def health():
 # @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """
-    Take a piece of text, decide about it, log the decision, answer.
-    ← TODO — Milestones 3, 4 and 5
+    Take a piece of text, score it, log the decision, and answer.
 
     Expects JSON:
         {"text": "...", "creator_id": "..."}
@@ -195,7 +194,7 @@ def submit():
          response too. Next unit you can't diagnose anything without them.
 
     **Milestone 5 — the label.**
-      8. `scoring.score_to_label(...)` and put the real label in the response.
+      8. `scoring.score_to_label(...)` supplies the reader-facing label.
 
     ─────────────────────────────────────────────────────────────────────────
     Worth deciding early, because unit 8's attack set will decide it for you:
@@ -233,10 +232,9 @@ def submit():
     style_score = style_signal(text)
     combined_score = combine_signals(model_score, style_score)
 
-    # Temporary placeholders until Milestone 5.
-    guess = "unsure"
+    # Convert the combined score into a reader-facing decision.
+    guess, label = score_to_label(combined_score)
     confidence = combined_score
-    label = "The writing has not yet been fully evaluated."
 
     audit.log_decision(
         content_id=content_id,
@@ -263,7 +261,7 @@ def submit():
 @app.post("/appeal")
 def appeal():
     """
-    A writer says you got it wrong. ← TODO — Milestone 5
+    Record an appeal against an existing decision.
 
     Expects JSON:
         {"content_id": "...", "reasoning": "..."}
@@ -280,14 +278,43 @@ def appeal():
     to the person on the other end. It's the only thing standing between a
     wrong accusation and nothing at all.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
 
-    # TODO: delete this and build the route.
+    if not isinstance(payload, dict):
+        return jsonify({"error": "A valid JSON object is required."}), 400
+
+    content_id = payload.get("content_id")
+    reasoning = payload.get("reasoning")
+
+    if not isinstance(content_id, str) or not content_id.strip():
+        return jsonify({"error": "content_id is required."}), 400
+
+    if not isinstance(reasoning, str) or not reasoning.strip():
+        return jsonify({"error": "reasoning is required."}), 400
+
+    original_decision = next(
+        (
+            entry
+            for entry in audit.entries_for(content_id)
+            if entry.get("status") == "decided"
+        ),
+        None,
+    )
+
+    if original_decision is None:
+        return jsonify({"error": "content_id not found."}), 404
+
+    audit.log_appeal(
+        content_id=content_id,
+        creator_id=original_decision["creator_id"],
+        reasoning=reasoning,
+    )
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal isn't built yet — see the TODO in app.py.",
-        "you_sent": payload,
-    }), 501
+        "content_id": content_id,
+        "status": "under_review",
+        "message": "Your appeal has been recorded."
+    }), 200
 
 
 # ── Already works ─────────────────────────────────────────────────────────────

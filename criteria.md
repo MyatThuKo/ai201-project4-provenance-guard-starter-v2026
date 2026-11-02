@@ -5,14 +5,14 @@ Five criteria that say what "working" means for this service, written in unit 7
 
 **All five are yours.** None are given.
 
-An acceptance criterion names a number or something plainly observable. *"The
-detector is accurate"* is an opinion — and perfect AI detection isn't possible
-anyway, so it's an opinion about something nobody can deliver. *"Of 10 pieces I
-wrote myself, at most 1 is labelled high-confidence AI"* is a criterion.
+An acceptance criterion names a number or something plainly observable. _"The
+detector is accurate"_ is an opinion — and perfect AI detection isn't possible
+anyway, so it's an opinion about something nobody can deliver. _"Of 10 pieces I
+wrote myself, at most 1 is labelled high-confidence AI"_ is a criterion.
 
-Under each, write a sentence or two on **why that target**. *"I allow at most 1
+Under each, write a sentence or two on **why that target**. _"I allow at most 1
 false positive in 10 because on a writing site a wrong accusation costs more
-than a missed detection"* is a real answer.
+than a missed detection"_ is a real answer.
 
 > Missing your own targets next unit costs you nothing. Setting a target so
 > easy you can't miss it does.
@@ -23,13 +23,13 @@ than a missed detection"* is a real answer.
 
 **Cover at least three of these five areas.** They're prompts, not a form.
 
-| Area | A question it could answer |
-|---|---|
-| False positives | How often may a human's writing get called AI? |
-| Score spread | How far apart should clearly-AI and clearly-human text score? |
-| Label coverage | Is every one of your three labels actually reachable? |
-| The appeal path | Does an appeal always change status and always get recorded? |
-| Bad input | What happens when `text` is missing, empty, or enormous? |
+| Area            | A question it could answer                                    |
+| --------------- | ------------------------------------------------------------- |
+| False positives | How often may a human's writing get called AI?                |
+| Score spread    | How far apart should clearly-AI and clearly-human text score? |
+| Label coverage  | Is every one of your three labels actually reachable?         |
+| The appeal path | Does an appeal always change status and always get recorded?  |
+| Bad input       | What happens when `text` is missing, empty, or enormous?      |
 
 Two things worth knowing before you pick numbers:
 
@@ -64,7 +64,7 @@ The human samples will be writing I produced myself. The AI samples will be gene
 
 **Why this target:**
 
-The two signals should produce meaningfully different scores for AI-generated and human-written text. A difference of 0.35 is a challenging initial target for measuring separation between the two groups. However, a difference in averages does not guarantee accurate individual classifications, so I will evaluate this alongside the false-positive and label-coverage criteria.
+My initial experiments showed that GPT-2 assigned a score of approximately 0.72 to AI-generated writing and 0.70 to human-written text. Since these model scores are very close, I want the combined system to achieve better separation using the additional stylometry signal, which I weighted at 0.60. A minimum average difference of 0.35 is a challenging target, although it does not guarantee accurate classification of individual submissions.
 
 ---
 
@@ -77,7 +77,8 @@ Of 3 predetermined text samples submitted through `POST /submit` — one known h
 The test samples must be selected before running the detector, without adjusting them based on the resulting scores.
 
 **Why this target:**
-I want to verify that the complete service can produce all three labels from actual writing, rather than only checking the threshold logic with manually selected scores. This is especially important for the unsure label, which allows the system to acknowledge uncertainty instead of forcing a confident classification.
+
+My human threshold is 0.35, but some ordinary human-written samples received combined scores between approximately 0.37 and 0.54. This makes it challenging to produce a high-confidence human label from real writing rather than artificially chosen scores. I want to verify that the complete pipeline can reach all three labels, especially the unsure label that helps avoid unsupported accusations.
 
 ---
 
@@ -117,7 +118,8 @@ The seven invalid cases are:
 All 7 cases must pass in each of the three evaluation trials.
 
 **Why this target:**
-The service should validate incoming requests before running expensive model inference. Invalid input should produce predictable error responses without crashing the application or leaving it unresponsive. Testing the health endpoint afterward verifies that the service continues operating correctly.
+
+The GPT-2 detector is computationally expensive, so malformed requests should be rejected before model inference. By enforcing the 10,000-character limit and returning predictable HTTP errors, I can prevent invalid submissions from unnecessarily consuming processing resources. Requiring `GET /health` to return HTTP 200 afterward also confirms that invalid requests do not bring down the service.
 
 ---
 

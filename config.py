@@ -54,8 +54,14 @@ DETECTOR_MAX_TOKENS = 400
 # down BEFORE you code it, and to put the numbers in your README. Whatever you
 # decide, it goes here.
 
-WEIGHT_MODEL_SIGNAL = 0.5
-WEIGHT_STYLE_SIGNAL = 0.5
+WEIGHT_MODEL_SIGNAL = 0.4
+WEIGHT_STYLE_SIGNAL = 0.6
+
+# When the two signals are further apart than this, they disagree, and
+# disagreement is uncertainty: the combined score is capped at
+# DISAGREEMENT_CAP so a split can never produce a high-confidence AI label.
+DISAGREEMENT_GAP = 0.30
+DISAGREEMENT_CAP = 0.60
 
 
 # ─── Thresholds (Milestone 5) ────────────────────────────────────────────────

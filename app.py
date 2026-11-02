@@ -30,6 +30,9 @@ from flask import Flask, jsonify, request
 
 import audit
 import config
+from detector import DetectorUnavailable, model_signal
+from scoring import combine_signals
+from stylometry import style_signal
 
 app = Flask(__name__)
 
@@ -220,9 +223,6 @@ def submit():
     # Generate a unique identifier.
     content_id = str(uuid.uuid4())
 
-    # Milestone 3: use only the first signal.
-    from detector import model_signal, DetectorUnavailable
-
     try:
         model_score = model_signal(text)
     except ValueError as exc:
@@ -230,9 +230,12 @@ def submit():
     except DetectorUnavailable:
         return jsonify({"error": "Detector model is unavailable."}), 503
 
-    # Temporary placeholders until Milestones 4 and 5.
+    style_score = style_signal(text)
+    combined_score = combine_signals(model_score, style_score)
+
+    # Temporary placeholders until Milestone 5.
     guess = "unsure"
-    confidence = model_score
+    confidence = combined_score
     label = "The writing has not yet been fully evaluated."
 
     audit.log_decision(
@@ -240,8 +243,8 @@ def submit():
         creator_id=creator_id,
         guess=guess,
         model_score=model_score,
-        style_score=None,
-        combined_score=None,
+        style_score=style_score,
+        combined_score=combined_score,
         label=label,
         status="decided",
     )
@@ -252,7 +255,7 @@ def submit():
         "confidence": confidence,
         "label": label,
         "model_score": model_score,
-        "style_score": None,
+        "style_score": style_score,
     }), 200
 
 

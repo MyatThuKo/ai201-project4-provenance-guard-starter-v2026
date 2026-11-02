@@ -85,19 +85,43 @@ These measurements are combined into a normalized AI-likelihood score between 0 
 
 ### The combining rule
 
-<!-- Write the rule in words, then give the numbers. What happens when the two
-     signals disagree? -->
-
 **The rule:**
+
+I use a weighted average to combine the model signal and stylometry signal into one AI-likelihood score between 0 and 1. I give stylometry a higher weight because my initial testing showed that GPT-2 can assign relatively high AI-likelihood scores to human-written text.
+
+When the two signals disagree by more than 0.30, I cap the combined score at 0.60. This prevents a high-confidence AI label when the signals strongly disagree, reducing the risk of falsely accusing a human writer. However, this may also cause some AI-generated writing to receive an unsure label.
 
 **The numbers:**
 
+- Model signal weight: `0.40` (40%)
+- Stylometry signal weight: `0.60` (60%)
+- Formula: `combined_score = 0.4 * model_score + 0.6 * style_score`
+- Disagreement threshold: `0.30`
+- Disagreement cap: `0.60`
+- Current AI threshold: `0.65`
+
 **Where it lives:** `scoring.py::combine_signals`
 
-<!-- ⚠️ The grader checks your code against that line. If your rule lives
-     somewhere else, say where. -->
-
 **A case where my two signals split, and what my rule does with it:**
+
+I submitted a paragraph I wrote myself about my education and software engineering experience.
+
+- Model signal: `0.7206`
+- Stylometry signal: `0.4638`
+- Difference: `0.2568`
+- Combined score: `0.5665`
+
+The model signal assigned relatively strong AI-like characteristics to my writing, while the stylometry signal returned a lower score.
+
+Using my weighted average:
+
+`0.4 * 0.7206 + 0.6 * 0.4638 = 0.5665`
+
+Since the difference between the signals was below 0.30, the disagreement cap was not triggered.
+
+The combined score falls within my current unsure range of 0.35–0.65. This demonstrates how combining both signals reduces the likelihood of making a confident AI accusation based solely on the model's prediction.
+
+Although this example demonstrates a difference between the signals, it does not test the disagreement cap itself. The scoring weights and thresholds remain heuristic choices that will need further evaluation.
 
 ---
 

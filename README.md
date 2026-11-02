@@ -260,11 +260,21 @@ The appeal endpoint records the writer's explanation and marks the submission fo
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d '{
+    "text": "On a quiet Sunday afternoon, the small town of Willow Creek seemed to move at its own pace. A gentle breeze carried the scent of freshly brewed coffee through the streets, while golden leaves drifted slowly from the trees. At the corner bookstore, a young woman discovered an old journal tucked behind a row of forgotten novels. Its pages were filled with handwritten stories, mysterious sketches, and notes from someone who had lived there nearly a century earlier. What began as an ordinary afternoon soon turned into an unexpected adventure, reminding her that even the simplest moments can lead to extraordinary discoveries.",
+    "creator_id": "writer_321"
+  }'
 ```
 
 ```json
-
+{
+  "confidence": 0.6964,
+  "content_id": "2bb8f5f3-e974-4686-8b50-06c4e92e0dbf",
+  "guess": "unsure",
+  "label": "The writing has not yet been fully evaluated.",
+  "model_score": 0.6964,
+  "style_score": null
+}
 ```
 
 **An appeal**
@@ -286,7 +296,44 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 ```
 
 ```json
-
+{
+  "count": 3,
+  "entries": [
+    {
+      "combined_score": null,
+      "content_id": "65085f5f-9047-432e-bc25-1a3cfa1244b2",
+      "creator_id": "writer_123",
+      "guess": "unsure",
+      "label": "The writing has not yet been fully evaluated.",
+      "model_score": 0.6964,
+      "status": "decided",
+      "style_score": null,
+      "timestamp": "2026-11-02T00:03:30+00:00"
+    },
+    {
+      "combined_score": null,
+      "content_id": "7e25d3f7-f3ec-4007-8871-c2ab66715a68",
+      "creator_id": "writer_321",
+      "guess": "unsure",
+      "label": "The writing has not yet been fully evaluated.",
+      "model_score": 0.7218,
+      "status": "decided",
+      "style_score": null,
+      "timestamp": "2026-11-02T00:09:52+00:00"
+    },
+    {
+      "combined_score": null,
+      "content_id": "2bb8f5f3-e974-4686-8b50-06c4e92e0dbf",
+      "creator_id": "writer_123",
+      "guess": "unsure",
+      "label": "The writing has not yet been fully evaluated.",
+      "model_score": 0.6964,
+      "status": "decided",
+      "style_score": null,
+      "timestamp": "2026-11-02T00:12:40+00:00"
+    }
+  ]
+}
 ```
 
 ---

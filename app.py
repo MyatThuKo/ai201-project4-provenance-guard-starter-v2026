@@ -199,17 +199,62 @@ def submit():
     what should this do when `text` is missing, empty, or enormous? A crash on
     a malformed input is one of the most common real failures there is.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
 
-    # TODO: delete this and build the route.
+    if not isinstance(payload, dict):
+        return jsonify({"error": "A valid JSON object is required."}), 400
+
+    text = payload.get("text")
+    creator_id = payload.get("creator_id")
+
+    # Validate input before running the model.
+    if not isinstance(text, str) or not text.strip():
+        return jsonify({"error": "text must be a non-empty string."}), 400
+
+    if not isinstance(creator_id, str) or not creator_id.strip():
+        return jsonify({"error": "creator_id must be a non-empty string."}), 400
+
+    if len(text) > 10_000:
+        return jsonify({"error": "text exceeds 10000 characters."}), 413
+
+    # Generate a unique identifier.
+    content_id = str(uuid.uuid4())
+
+    # Milestone 3: use only the first signal.
+    from detector import model_signal, DetectorUnavailable
+
+    try:
+        model_score = model_signal(text)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except DetectorUnavailable:
+        return jsonify({"error": "Detector model is unavailable."}), 503
+
+    # Temporary placeholders until Milestones 4 and 5.
+    guess = "unsure"
+    confidence = model_score
+    label = "The writing has not yet been fully evaluated."
+
+    audit.log_decision(
+        content_id=content_id,
+        creator_id=creator_id,
+        guess=guess,
+        model_score=model_score,
+        style_score=None,
+        combined_score=None,
+        label=label,
+        status="decided",
+    )
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /submit isn't built yet — see the TODO in app.py.",
-        "you_sent": {
-            "text_length": len(payload.get("text", "")),
-            "creator_id": payload.get("creator_id"),
-        },
-    }), 501
+        "content_id": content_id,
+        "guess": guess,
+        "confidence": confidence,
+        "label": label,
+        "model_score": model_score,
+        "style_score": None,
+    }), 200
+
 
 
 @app.post("/appeal")

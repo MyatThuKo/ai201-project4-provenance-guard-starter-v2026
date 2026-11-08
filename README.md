@@ -542,11 +542,37 @@ The first one is slow while the model loads.
 <!-- Choose entries that show the interesting failures, not the ten easiest. -->
 
 ```json
-
+{"timestamp": "2026-11-08T22:03:15+00:00", "content_id": "9a81a41d-0870-463d-a1e9-83f5852a7655", "creator_id": "attacker_FP03", "guess": "ai", "model_score": 0.8051, "style_score": 0.5702, "combined_score": 0.6642, "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:15+00:00", "content_id": "ab0a4c7b-9428-4202-9680-b95f3e7d8d5a", "creator_id": "attacker_FP02", "guess": "unsure", "model_score": 0.7387, "style_score": 0.5562, "combined_score": 0.6292, "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:14+00:00", "content_id": "119c55df-695e-4571-936a-62579847b514", "creator_id": "attacker_EV05", "guess": "human","model_score": 0.3212, "style_score": 0.3503, "combined_score": 0.3387, "label": "This writing appears to have been written by a person, althoughits origin cannot be verified automatically.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:15+00:00", "content_id": "52c0bd85-7469-403d-b27e-4d80e2f3cdb1", "creator_id": "attacker_EV09", "guess": "unsure", "model_score": 0.7042, "style_score": 0.5659, "combined_score": 0.6212, "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:14+00:00", "content_id": "6557f81b-a8bb-4caa-a032-0a47a1fae681", "creator_id": "attacker_EV01", "guess": "unsure", "model_score": 0.1635, "style_score": 0.8305, "combined_score": 0.5637, "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:16+00:00", "content_id": "59a0c2e3-7b0c-4976-a3d2-9b3c1b8ecb29", "creator_id": "attacker_MF05", "guess": "ai", "model_score": 0.9976, "style_score": 0.75, "combined_score": 0.849, "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:16+00:00", "content_id": "28ebe35f-0907-45ff-8972-b4638b9ae4f6", "creator_id": "attacker_MF04", "guess": "human","model_score": 0.0112, "style_score": 0.45, "combined_score": 0.2745, "label": "This writing appears to have been written by a person, although its origin cannot be verified automatically.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:16+00:00", "content_id": "57d5106a-7680-47ac-9fa6-4caf728dfcc8", "creator_id": "attacker_MF03", "guess": "unsure", "model_score": 0.0, "style_score": 0.75, "combined_score": 0.45, "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.", "status": "decided"}
+{"timestamp": "2026-11-08T22:03:16+00:00", "creator_id": "attacker_flood", "event": "rejected", "status": "rejected", "reason": "rate_limited", "limit": "10 per 1 minute"}
+{"timestamp": "2026-11-08T22:03:16+00:00", "creator_id": "unknown", "event": "rejected", "status": "rejected", "reason": "invalid_json", "limit":"none"}
 ```
 
-**The single worst outcome** — the one I'd least want to explain to a writer
-whose work got caught by it:
+**The single worst outcome** — The worst outcome was **FP03**, which contained carefully written human text from a non-native English speaker. My system classified it as AI-generated with a combined score of **0.6642**, above the 0.65 AI threshold. This is the outcome I would least want to explain to a writer because someone who wrote their own work could be incorrectly accused of using AI, potentially affecting their credibility.
+
+**Full attack results:**
+
+See [Baseline Attack Results](results/attack_run_2026-11-08_1703.md)
+for all 56 attacks, their responses, and HELD/BROKE verdicts.
+
+**Attack results by family**
+
+| Attack family      |  Total |   HELD |  BROKE |
+| ------------------ | -----: | -----: | -----: |
+| Evasion            |     10 |      1 |      9 |
+| False positive     |      8 |      7 |      1 |
+| Prompt injection   |      6 |      6 |      0 |
+| Malformed requests |     20 |     18 |      2 |
+| Same-creator flood |     12 |     12 |      0 |
+| **Total**          | **56** | **44** | **12** |
+
+These results use an evasion definition where AI-generated writing receiving `human` or `unsure` counts as a successful evasion. Malformed inputs receiving `unsure` count as safely handled, while nonsensical inputs receiving confident human or AI labels count as failures. The prompt-injection totals assume the response labels and audit records were not manipulated.
 
 ---
 

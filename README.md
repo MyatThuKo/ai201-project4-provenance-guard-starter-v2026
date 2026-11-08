@@ -484,24 +484,50 @@ $ curl "http://127.0.0.1:5000/log?limit=10"
 
 ## Rate Limiting
 
-**My limits:** ___ per minute, ___ per day
+**My limits:** 10 per minute, 200 per day
 
 **Why those numbers and not others:**
+
 <!-- Think about two people: a real writer submitting their own work a few
      times an hour, and a script sending a thousand variations to map your
      thresholds. Your numbers have to be liveable for the first and hostile to
      the second. -->
 
-**What a caller counts as:** <!-- per address, or per creator_id? They fail
-differently — one script can look like a thousand callers, and one household
-can look like one. -->
+I chose 10 submissions per minute because a legitimate writer may need to submit or revise their writing multiple times, but 10 requests provides enough room for normal usage without allowing unlimited rapid submissions.
+
+I chose 200 submissions per day as an additional safeguard against automated scripts repeatedly probing the detector. These limits are initial design choices and would need further evaluation using real traffic patterns.
+
+**What a caller counts as:** The rate limiter identifies callers using `creator_id` when a valid identifier is provided. If `creator_id` is missing or invalid, it falls back to the requester's IP address. This is not a secure identity mechanism because someone could use multiple creator IDs to bypass the limit. However, it is sufficient for testing basic rate-limiting behavior in this project.
 
 **The run of status codes when I pushed past it:**
 
 <!-- python run_attacks.py --flood 15 -->
 
 ```
+15 submissions as 'flood_tester' against http://127.0.0.1:5000
+The first one is slow while the model loads.
 
+  [ 1/15] 200
+  [ 2/15] 200
+  [ 3/15] 200
+  [ 4/15] 200
+  [ 5/15] 200
+  [ 6/15] 200
+  [ 7/15] 200
+  [ 8/15] 200
+  [ 9/15] 200
+  [10/15] 200
+  [11/15] 429
+  [12/15] 429
+  [13/15] 429
+  [14/15] 429
+  [15/15] 429
+
+============================================================
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
+============================================================
+
+5 of 15 were rate limited.
 ```
 
 ---
@@ -510,8 +536,6 @@ can look like one. -->
 
 <!-- Every attack with its outcome and a held-or-broke mark.
      `run_attacks.py --label before` produces the table. -->
-
-
 
 **Ten audit log entries from the run**
 
@@ -524,8 +548,6 @@ can look like one. -->
 **The single worst outcome** — the one I'd least want to explain to a writer
 whose work got caught by it:
 
-
-
 ---
 
 ## Run Log and Verdicts
@@ -533,12 +555,12 @@ whose work got caught by it:
 <!-- Your five criteria across three trials. `run_eval.py --label before`. -->
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| --------- | ------ | ----- | ----- | ----- | ------- |
+| 1.        |        |       |       |       |         |
+| 2.        |        |       |       |       |         |
+| 3.        |        |       |       |       |         |
+| 4.        |        |       |       |       |         |
+| 5.        |        |       |       |       |         |
 
 **Real output from one trial**, pasted as text, naming the file and function
 that produced it:
@@ -563,8 +585,6 @@ that produced it:
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
 
-
-
 ---
 
 ## The Improvement
@@ -577,14 +597,10 @@ that produced it:
 
 <!-- Same format. `run_attacks.py --label after` -->
 
-
-
 **Did it help, and how do I know:**
 
 <!-- Widening the unsure band usually fixes one problem and creates another.
      Reporting that trade honestly is worth full credit. -->
-
-
 
 ---
 
@@ -593,14 +609,10 @@ that produced it:
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
-
-
 **The trade I'd make if this ran for real:**
 
 <!-- Two sentences. Fewer wrong accusations means more AI text getting through.
      Say which way you'd go and WHO PAYS FOR IT. -->
-
-
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

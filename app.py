@@ -154,7 +154,7 @@ def health():
 # ── YOU BUILD THIS ────────────────────────────────────────────────────────────
 
 @app.post("/submit")
-# @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
+@limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """
     Take a piece of text, score it, log the decision, and answer.
@@ -203,39 +203,89 @@ def submit():
     """
     payload = request.get_json(silent=True)
 
+    # Identify the caller even when the request is invalid.
+    creator_id = (
+        payload.get("creator_id")
+        if isinstance(payload, dict)
+        else None
+    )
+
+    def reject(message: str, reason: str, status_code: int):
+        """Record a rejected request before returning an error."""
+        audit.log_rejection(
+            creator_id=(
+                creator_id
+                if isinstance(creator_id, str) and creator_id.strip()
+                else "unknown"
+            ),
+            reason=reason,
+            limit="none",
+        )
+
+        return jsonify({"error": message}), status_code
+
+    # Validate JSON structure.
     if not isinstance(payload, dict):
-        return jsonify({"error": "A valid JSON object is required."}), 400
+        return reject(
+            "A valid JSON object is required.",
+            "invalid_json",
+            400,
+        )
 
     text = payload.get("text")
-    creator_id = payload.get("creator_id")
 
-    # Validate input before running the model.
+    # Validate required fields.
     if not isinstance(text, str) or not text.strip():
-        return jsonify({"error": "text must be a non-empty string."}), 400
+        return reject(
+            "text must be a non-empty string.",
+            "invalid_text",
+            400,
+        )
 
     if not isinstance(creator_id, str) or not creator_id.strip():
-        return jsonify({"error": "creator_id must be a non-empty string."}), 400
+        return reject(
+            "creator_id must be a non-empty string.",
+            "invalid_creator_id",
+            400,
+        )
 
     if len(text) > 10_000:
-        return jsonify({"error": "text exceeds 10000 characters."}), 413
+        return reject(
+            "text exceeds 10000 characters.",
+            "text_too_long",
+            413,
+        )
 
-    # Generate a unique identifier.
+    # Generate a unique content ID.
     content_id = str(uuid.uuid4())
 
     try:
         model_score = model_signal(text)
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return reject(
+            str(exc),
+            "detector_invalid_input",
+            400,
+        )
     except DetectorUnavailable:
-        return jsonify({"error": "Detector model is unavailable."}), 503
+        return reject(
+            "Detector model is unavailable.",
+            "detector_unavailable",
+            503,
+        )
 
+    # Calculate both signals and combine them.
     style_score = style_signal(text)
-    combined_score = combine_signals(model_score, style_score)
+    combined_score = combine_signals(
+        model_score,
+        style_score,
+    )
 
     # Convert the combined score into a reader-facing decision.
     guess, label = score_to_label(combined_score)
     confidence = combined_score
 
+    # Record the completed decision.
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
@@ -255,6 +305,7 @@ def submit():
         "model_score": model_score,
         "style_score": style_score,
     }), 200
+
 
 
 

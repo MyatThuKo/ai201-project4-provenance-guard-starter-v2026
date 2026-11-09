@@ -472,11 +472,17 @@ $ curl "http://127.0.0.1:5000/log?limit=10"
 - _What came back:_ Claude pointed out that I do not currently have evidence that all three labels can be reached and that I am missing "human" label.
 - _What I changed:_ I searched online and took a paragraph from `Pride and Prejudice, Chapter 1 — Jane Austen (1813)` to test whether my implementation is correctly identifying the texts written by a human.
 
-**Moment 2**
+**Moment 2 — Implementing and Refining Stylometry (Unit 7)**
 
-- _What I asked for:_ I asked Claude to review my stylometry.py implementations, particularly `punctuation_density()` and how to validate the style signal.
-- _What came back:_ It pointed out that apostrophes in contractions and hyphens in compound words were being counted as stylistic punctuation. It suggested refining the punctuation matching logic and testing the measurements separately.
-- _What I changed:_ I updated `punctuation_density()` to exclude punctuation within words and improved how `style_signal()` handles submissions with fewer than two usable sentences. I also tested the function with different writing samples.
+- _What I asked for:_ I asked Claude to help implement the initial `stylometry.py` and the combining rule for my two detection signals.
+- _What came back:_ Claude provided an implementation with three stylometry measurements: sentence-length spread, vocabulary variety, and punctuation density. It also included a weighted scoring rule to combine these measurements into a single style signal.
+- _What I changed:_ After reviewing the implementation, I refined `punctuation_density()` to avoid counting apostrophes in contractions and hyphens within compound words as separate punctuation marks. I also improved how `style_signal()` handles submissions with fewer than two usable sentences and tested the measurements against my own writing samples. Claude later confirmed the behavior of my refinements.
+
+**Moment 3 — Selecting and Measuring an Improvement (Unit 8)**
+
+- _What I asked for:_ I asked Claude to analyze my evaluation results and compare possible improvements to the detector, including changing the AI classification threshold and reweighting the stylometry signal.
+- _What came back:_ Claude simulated several alternatives using my existing evaluation samples. One option suggested increasing the AI threshold from 0.65 to 0.70, while another suggested changing the stylometry weights to 30% sentence-length spread and 70% vocabulary variety. The simulation indicated that reweighting the style signal could improve score separation and AI detection while reducing false positives.
+- _What I changed:_ I initially tested the higher AI threshold, but it reduced AI detection from 4/10 to 1/10. I then restored the original threshold and selected the stylometry reweighting as my final improvement. After rerunning the full attack set and acceptance criteria, the score separation improved from 0.1133 to 0.2676, AI detection increased from 4/10 to 6/10, and false-positive classifications of my own writing decreased from 1/10 to 0/10. I documented that Criterion 2 still missed its target and that the new weights could be overfitted to my evaluation samples.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
@@ -1137,7 +1143,79 @@ After the changes, criterion 5 switched from `MET` to `MISSED`. This wasn't caus
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
+My improvement increased the average score separation between AI-generated and human-written text from 0.1133 to 0.2676, reduced false-positive classifications, and increased the number of detected evasion attacks from one to three. However, several weaknesses remain.
+
+### 1. Seven evasion attacks still succeeded
+
+**Affected attacks:** EV01, EV02, EV05, EV06, EV07, EV08, and EV10.
+
+These inputs still avoided the high-confidence AI label. Their weaknesses involve several different stages of my detection pipeline:
+
+- **EV01 and EV08:** Both attacks produced very low model scores (0.1635 and 0.2452), despite relatively high stylometry scores. Their uncapped weighted averages were approximately 0.612 and 0.627, respectively, already below the AI threshold of 0.65. Although the disagreement cap reduced both scores to 0.60, it did not cause their unsure classifications. The primary weakness was the low model signal pulling down the combined score.
+- **EV02 and EV06:** Sentence-length changes affected the stylometry signal, keeping the combined scores below the AI threshold.
+- **EV05:** Heavily edited AI-origin writing still received an unsure classification, even though the new weights improved its score.
+- **EV07:** The punctuation-padding attack continued to receive an unsure label. After my improvement, punctuation density no longer contributes directly to the style signal. The model score was 0.5862 and the style score was 0.4839, producing a combined score of 0.5248. Both signals remained below the level needed for a confident AI classification, so the attack continued to evade detection. Punctuation could still indirectly affect other measurements, but the removed punctuation-density measure was not responsible for this result.
+- **EV10:** This attack demonstrates a new weakness introduced by my improvement. The repeated stanza structure uses repeated vocabulary, which reduces the vocabulary-diversity measurement. Because vocabulary variety now contributes 70% of the stylometry signal, EV10's style score decreased from 0.4206 to 0.1324.
+
+The model score remained high at 0.9792, but the final weighted score fell to 0.4711, resulting in unsure. The disagreement cap did not reduce this score because the uncapped average was already below 0.60.
+
+Although EV10 was classified as unsure before and after the improvement, the new weighting made the attack more effective by moving its combined score farther from the AI threshold.
+
+**What I would fix next:** I would evaluate the detector against a broader collection of adversarially edited text and reconsider how the two signals handle extreme disagreement. I would also test additional features that are less sensitive to superficial formatting changes.
+
+**Why I stopped:** My assignment required one isolated, measurable improvement. Changing the model signal or disagreement rule would introduce additional variables and make it harder to attribute the observed improvement to the stylometry reweighting.
+
+### 2. Malformed inputs still receive confident labels
+
+**Affected attacks:** MF04 and MF05.
+
+MF04, containing only punctuation, received a `human` classification with a combined score of 0.0945. MF05, containing an unusually long single word, received an `ai` classification with a score of 0.9090.
+
+**Stage:** Route validation.
+
+**Mechanism:** My validation checks that the input is a nonempty string within the length limit, but it does not adequately verify that the text contains meaningful language suitable for authorship analysis.
+
+**What I would fix next:** Add validation for minimum usable word count and sufficient meaningful language before running the detector.
+
+**Why I stopped:** Input validation is a separate issue from the scoring improvement I selected. I would evaluate it as another independent change.
+
+### 3. Criterion 2 still misses its target
+
+**Original target:** AI-generated writing must have an average combined score at least 0.35 higher than human writing.
+
+**Measured improvement:** 0.1133 before → 0.2676 after.
+
+Although the separation improved substantially, it remains below my required target.
+
+**What I would fix next:** Test on an independent dataset and investigate additional signals that can distinguish AI-generated writing from human writing more reliably.
+
+**Why I stopped:** I selected my new weights using the same evaluation samples, which introduces overfitting risk. Further tuning on those samples would make the evaluation less trustworthy.
+
+### 4. Rate limiting interferes with validation errors
+
+**Affected criterion:** Criterion 5.
+
+The first after-run returned 5/7 successful checks because requests missing a usable `creator_id` shared an IP-based rate-limit bucket. Two requests received HTTP 429 instead of the expected HTTP 400.
+
+A later isolated rerun returned 7/7 in all three trials without code changes, supporting the conclusion that the failure depended on rate-limit state.
+
+**What I would fix next:** Investigate how the limiter identifies requests with missing or invalid creator IDs and how validation errors should interact with rate limiting.
+
+**Why I stopped:** Changing the limiter would introduce a second implementation improvement unrelated to stylometry. I preserved both results rather than hiding the original failure.
+
+### 5. Limitations of the new style weights
+
+The style signal now depends 70% on vocabulary variety. This may create a new evasion opportunity: an attacker could deliberately repeat common words to reduce the vocabulary-variety score.
+
+Very short texts may also have artificially high vocabulary variety because nearly every word is unique.
+
+My current results use the same texts that helped me choose the weights, so the measured improvement may overestimate performance on unseen writing.
+
+Before using this system in a real setting, I would evaluate it on independent human and AI writing samples with a wider variety of writing styles and lengths.
+
 **The trade I'd make if this ran for real:**
+
+If I deployed this system, I would prioritize reducing false accusations against genuine writers, even if that meant allowing more AI-generated writing to receive an unsure label. The cost of this decision would fall on instructors or reviewers, who would need to investigate uncertain cases manually, but I consider that preferable to wrongly accusing someone based solely on an unreliable detector score.
 
 <!-- Two sentences. Fewer wrong accusations means more AI text getting through.
      Say which way you'd go and WHO PAYS FOR IT. -->
@@ -1146,31 +1224,31 @@ After the changes, criterion 5 switched from `MET` to `MISSED`. This wasn't caus
 
      SUBMISSION CHECKLIST — unit 7
 
-       [ ] criteria.md has five numbered criteria, each naming a target
-       [ ] Each has a reason underneath
-       [ ] POST /submit returns content_id, guess, confidence, label,
+       [x] criteria.md has five numbered criteria, each naming a target
+       [x] Each has a reason underneath
+       [x] POST /submit returns content_id, guess, confidence, label,
            model_score and style_score
-       [ ] Two signals that measure DIFFERENT things, each with a named blind spot
-       [ ] Three label variants, all reachable, written out in full
-       [ ] POST /appeal changes status and writes to the log
-       [ ] Signals and Scoring names scoring.py::combine_signals
-       [ ] Sample Run: a submission AND an appeal, as pasted text
-       [ ] At least four new commits
-       [ ] Repository URL submitted — WRITE IT DOWN
+       [x] Two signals that measure DIFFERENT things, each with a named blind spot
+       [x] Three label variants, all reachable, written out in full
+       [x] POST /appeal changes status and writes to the log
+       [x] Signals and Scoring names scoring.py::combine_signals
+       [x] Sample Run: a submission AND an appeal, as pasted text
+       [x] At least four new commits
+       [x] Repository URL submitted — WRITE IT DOWN
 
      SUBMISSION CHECKLIST — unit 8
 
-       [ ] Rate limiting on /submit, with your numbers justified
-       [ ] The pasted run of status codes showing 429
-       [ ] Audit log with all nine fields, recording rejections too
-       [ ] The attack set run IN FULL, every input with an outcome
-       [ ] Ten audit log entries pasted as text
-       [ ] Five criteria across three trials
-       [ ] A diagnosis for every miss and every broken attack — stage AND mechanism
-       [ ] One improvement, with Attack Run — After
-       [ ] What's Still Broken, including the production trade
-       [ ] At least four new commits
-       [ ] The SAME repository URL as last unit
+       [x] Rate limiting on /submit, with your numbers justified
+       [x] The pasted run of status codes showing 429
+       [x] Audit log with all nine fields, recording rejections too
+       [x] The attack set run IN FULL, every input with an outcome
+       [x] Ten audit log entries pasted as text
+       [x] Five criteria across three trials
+       [x] A diagnosis for every miss and every broken attack — stage AND mechanism
+       [x] One improvement, with Attack Run — After
+       [x] What's Still Broken, including the production trade
+       [x] At least four new commits
+       [x] The SAME repository URL as last unit
 
      Do not delete and recreate this repository.
      ═════════════════════════════════════════════════════════════════════ -->

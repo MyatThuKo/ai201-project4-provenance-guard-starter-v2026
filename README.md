@@ -580,19 +580,392 @@ These results use an evasion definition where AI-generated writing receiving `hu
 
 <!-- Your five criteria across three trials. `run_eval.py --label before`. -->
 
-| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-| --------- | ------ | ----- | ----- | ----- | ------- |
-| 1.        |        |       |       |       |         |
-| 2.        |        |       |       |       |         |
-| 3.        |        |       |       |       |         |
-| 4.        |        |       |       |       |         |
-| 5.        |        |       |       |       |         |
+| Criterion             | Target                       | Run 1  | Run 2  | Run 3  | Verdict |
+| --------------------- | ---------------------------- | ------ | ------ | ------ | ------- |
+| 1. False positives    | At most 1/10                 | 1/10   | 1/10   | 1/10   | MET     |
+| 2. Score separation   | AI mean >= human mean + 0.35 | 0.1133 | 0.1133 | 0.1133 | MISSED  |
+| 3. Label coverage     | 3 distinct labels            | 3/3    | 3/3    | 3/3    | MET     |
+| 4. Appeal reliability | 6/6 checks                   | 6/6    | 6/6    | 6/6    | MET     |
+| 5. Bad-input handling | 7/7 checks                   | 7/7    | 7/7    | 7/7    | MET     |
+
+All three trials produced identical results for every criterion. This was expected because both the model signal and stylometry calculations are deterministic for the same input.
+
+Criterion 4 and the seventh case of Criterion 5 were tested using my additional script, `run_extra_checks.py`, because the standard `run_eval.py` scenario format does not support the appeal workflow or sending unparseable JSON directly.
+
+The Criterion 3 samples were selected during Unit 7 and were not modified for this evaluation.
 
 **Real output from one trial**, pasted as text, naming the file and function
 that produced it:
 
-```json
+**Run Log Before**
 
+### Criterion 1 — False positives
+
+Source: results/run_2026-11-08_1854_before.md, produced by run_eval.py::main, trial 1, scenario my own writing.
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.577,
+    "model_score": 0.5795,
+    "style_score": 0.5753,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "I am a computer science graduate, currently working as an iOS engineer"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5916,
+    "model_score": 0.7528,
+    "style_score": 0.4841,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Apple Magic Keyboard is a wireless keyboard that allows a user to conn"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5103,
+    "model_score": 0.7079,
+    "style_score": 0.3785,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "A lot of New Yorkers love to go shopping at the Whole Foods Market. Th"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6916,
+    "model_score": 0.8482,
+    "style_score": 0.5872,
+    "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+    "sent": "With advanced technologies, people are now starting to use contactless"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5222,
+    "model_score": 0.5752,
+    "style_score": 0.4868,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "The use of digital wallets or mobile wallets starts in 2011 where Goog"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.4152,
+    "model_score": 0.6441,
+    "style_score": 0.2626,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "In order to have a more streamlined and user-friendly customer experie"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.4515,
+    "model_score": 0.3673,
+    "style_score": 0.5077,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "This feature functions much like the shopping list from the legacy Who"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3729,
+    "model_score": 0.4707,
+    "style_score": 0.3077,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Year 1 represents the greatest incurred cost as this contains the cost"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.4868,
+    "model_score": 0.5355,
+    "style_score": 0.4543,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "The magnetic connection between the iPad and the Magic Keyboard plays "
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5876,
+    "model_score": 0.6929,
+    "style_score": 0.5174,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "The most realistic way to improve the usage of the contactless payment"
+  }
+]
+```
+
+### Criterion 2 — Score separation
+
+Source: results/run_2026-11-08_1854_before.md, produced by run_eval.py::main, trial 1, scenarios my own writing and AI samples.
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6536,
+    "model_score": 0.7376,
+    "style_score": 0.5976,
+    "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+    "sent": "A consistent morning routine can set the tone for the entire day. Star"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6147,
+    "model_score": 0.6344,
+    "style_score": 0.6015,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Reading offers benefits that extend far beyond entertainment. It stren"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.603,
+    "model_score": 0.6022,
+    "style_score": 0.6035,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Learning a new language is a challenging but deeply rewarding experien"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.7163,
+    "model_score": 0.8647,
+    "style_score": 0.6174,
+    "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+    "sent": "Regular exercise is one of the most effective ways to improve both phy"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6404,
+    "model_score": 0.7628,
+    "style_score": 0.5588,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Social media has transformed the way people communicate, share informa"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5951,
+    "model_score": 0.6815,
+    "style_score": 0.5375,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "There is something quietly comforting about a rainy day. The steady rh"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6786,
+    "model_score": 0.7512,
+    "style_score": 0.6302,
+    "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+    "sent": "Volunteering is a powerful way to make a positive difference in the co"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6,
+    "model_score": 0.8373,
+    "style_score": 0.5364,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Cities play a central role in the fight against climate change. Becaus"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6658,
+    "model_score": 0.8005,
+    "style_score": 0.576,
+    "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+    "sent": "The first day at a new job is often a mix of excitement and nervousnes"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5719,
+    "model_score": 0.7471,
+    "style_score": 0.4551,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Technology has reshaped education in profound ways. Online platforms, "
+  }
+]
+```
+
+**Average combined scores:**
+
+- Human-written samples: `0.5207`
+- AI-generated samples: `0.6339`
+- Score separation: `0.6339 - 0.5207 = 0.1133`
+- Required separation: `0.35`
+
+**Verdict: MISSED.** The difference between the groups was substantially smaller than my original target.
+
+### Criterion 3 — Label coverage
+
+Source: results/run_2026-11-08_1854_before.md, produced by run_eval.py::main, trial 1, scenario label coverage.
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.2856,
+    "model_score": 0.4585,
+    "style_score": 0.1703,
+    "label": "This writing appears to have been written by a person, although its origin cannot be verified automatically.",
+    "sent": "Mr. Bennet was so odd a mixture of quick parts, sarcastic humour, rese"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5768,
+    "model_score": 0.7626,
+    "style_score": 0.453,
+    "label": "We cannot reliably determine whether this writing was written by a person or generated with AI. This result should not be treated as evidence of misconduct.",
+    "sent": "Remote work has changed how lots of people think about their jobs. Man"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.7336,
+    "model_score": 0.7218,
+    "style_score": 0.7415,
+    "label": "This writing shows patterns associated with AI-generated text. This assessment is not proof of AI authorship and may be incorrect.",
+    "sent": "On a quiet Sunday afternoon, the small town of Willow Creek seemed to "
+  }
+]
+```
+
+### Criterion 4 — Appeal reliability
+
+Source: results/extra_checks_2026-11-08_1854_before.md, produced by run_extra_checks.py::main, trial 1.
+
+```json
+"appeals": [
+    {
+      "check": "appeal 1",
+      "content_id": "a1abd3b2-1f10-40dd-b309-ce162ebbfe28",
+      "appeal_status_code": 200,
+      "response_status": "under_review",
+      "appeal_in_log": true,
+      "latest_status_in_log": "under_review",
+      "passed": true
+    },
+    {
+      "check": "appeal 2",
+      "content_id": "fe54a035-e1ba-44e0-afb4-72edaa225fe2",
+      "appeal_status_code": 200,
+      "response_status": "under_review",
+      "appeal_in_log": true,
+      "latest_status_in_log": "under_review",
+      "passed": true
+    },
+    {
+      "check": "appeal 3",
+      "content_id": "ca904363-61f8-49f5-8452-47c4a3ad5de1",
+      "appeal_status_code": 200,
+      "response_status": "under_review",
+      "appeal_in_log": true,
+      "latest_status_in_log": "under_review",
+      "passed": true
+    },
+    {
+      "check": "appeal 4",
+      "content_id": "e9c60d81-8136-4043-91a2-d35000cda690",
+      "appeal_status_code": 200,
+      "response_status": "under_review",
+      "appeal_in_log": true,
+      "latest_status_in_log": "under_review",
+      "passed": true
+    },
+    {
+      "check": "appeal 5",
+      "content_id": "1b05ef00-a25e-4315-a8c0-0a448af52134",
+      "appeal_status_code": 200,
+      "response_status": "under_review",
+      "appeal_in_log": true,
+      "latest_status_in_log": "under_review",
+      "passed": true
+    },
+    {
+      "check": "nonexistent content_id",
+      "content_id": "e13695fb-349a-4fca-b999-b1707d0b5a14",
+      "appeal_status_code": 404,
+      "appeal_in_log": false,
+      "passed": true
+    }
+  ]
+```
+
+### Criterion 5 — Bad-input handling
+
+Source: results/extra_checks_2026-11-08_1854_before.md, produced by run_extra_checks.py::main, trial 1.
+
+```json
+"bad_input": [
+    {
+      "check": "missing text",
+      "expected": 400,
+      "status": 400,
+      "json_error": "text must be a non-empty string.",
+      "health_after": 200,
+      "passed": true
+    },
+    {
+      "check": "empty text",
+      "expected": 400,
+      "status": 400,
+      "json_error": "text must be a non-empty string.",
+      "health_after": 200,
+      "passed": true
+    },
+    {
+      "check": "missing creator_id",
+      "expected": 400,
+      "status": 400,
+      "json_error": "creator_id must be a non-empty string.",
+      "health_after": 200,
+      "passed": true
+    },
+    {
+      "check": "numeric text",
+      "expected": 400,
+      "status": 400,
+      "json_error": "text must be a non-empty string.",
+      "health_after": 200,
+      "passed": true
+    },
+    {
+      "check": "text over 10,000 chars",
+      "expected": 413,
+      "status": 413,
+      "json_error": "text exceeds 10000 characters.",
+      "health_after": 200,
+      "passed": true
+    },
+    {
+      "check": "whitespace-only text",
+      "expected": 400,
+      "status": 400,
+      "json_error": "text must be a non-empty string.",
+      "health_after": 200,
+      "passed": true
+    },
+    {
+      "check": "unparseable JSON",
+      "expected": 400,
+      "status": 400,
+      "json_error": "A valid JSON object is required.",
+      "health_after": 200,
+      "passed": true
+    }
+  ]
 ```
 
 **Diagnoses**
@@ -610,6 +983,75 @@ that produced it:
                         signal at 0.6, so it dragged the whole score down."
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
+
+### Criterion 2 — Score separation (MISSED)
+
+**Stage:** Signal one, signal two, and the combining rule.
+
+**Mechanism:** My detector did not sufficiently separate human-written and AI-generated writing. The average combined score for human writing was 0.5207, while AI-generated writing averaged 0.6339, giving a difference of only 0.1133 against my required 0.35.
+
+Although the AI samples generally received higher scores, many human samples also had relatively high model scores. My combining rule uses 40% model signal and 60% stylometry signal, but the two signals still produced overlapping scores for these samples. This suggests that the statistical characteristics I measure are not distinctive enough to reliably determine authorship.
+
+### Evasion attacks — 9 BROKE
+
+**Stage:** Model signal, stylometry signal, and combining rule.
+
+**Mechanism:** Nine of the ten evasion attacks avoided the high-confidence AI label. These attacks changed the structure or wording of AI-origin content, producing scores that fell below the AI threshold of 0.65.
+
+The attacks exposed several different weaknesses:
+
+- **EV01:** The model signal was very low (0.1635), while the style signal was high (0.8305). The resulting combined score was 0.5637, producing `unsure`. The unusually low model score prevented the high style score from producing an AI label.
+- **EV02, EV03, EV06, and EV07:** Changes involving sentence structure, quotations, and punctuation resulted in combined scores within the unsure range. These modifications altered the statistical features that my detector uses.
+- **EV05:** A heavy human-editing pass produced low scores from both signals (0.3212 and 0.3503), giving a combined score of 0.3387 and a `human` label.
+- **EV08:** The model signal returned a low score of 0.2452, while the stylometry signal returned a high score of 0.8025. Their disagreement of 0.5573 exceeded my disagreement threshold of 0.30. However, the weighted average was already 0.5796, below the disagreement cap of 0.60, so applying the cap did not change the result. The low model score pulled the combined score into the unsure range, allowing the AI-origin text to avoid a high-confidence AI classification.
+- **EV09:** Combining AI-origin text with a human-style introduction produced a combined score of 0.6212, below the AI threshold.
+- **EV10:** The model score was 0.9792, but the style score was only 0.4206. Because the difference exceeded 0.30, my disagreement cap reduced the final score to 0.60, resulting in `unsure`.
+
+These results demonstrate that an attacker can change the form of AI-generated writing to avoid a confident AI classification. My disagreement cap also creates a tradeoff: it reduces the risk of false accusations but can make evasion easier.
+
+### FP03 — Human writing falsely labeled AI
+
+**Stage:** Model signal and label mapping.
+
+**Mechanism:** FP03 contained carefully written human text from a non-native English speaker. The model signal returned 0.8051, while stylometry returned 0.5702. Their weighted average was 0.6642.
+
+The difference between the signals was approximately 0.2349, below my disagreement threshold of 0.30, so the cap did not activate. Because the combined score exceeded the AI threshold of 0.65, the system returned a high-confidence AI label.
+
+This is particularly concerning because the detector treated writing characteristics as evidence of AI authorship even though the text was human-written.
+
+### MF04 — Punctuation-only input classified as human
+
+**Stage:** Route validation and signal processing.
+
+**Mechanism:** My route checks whether the submitted text is a nonempty string, but it does not require meaningful words or sentences. As a result, punctuation-only input passed validation and was evaluated by the detector.
+
+The model signal returned 0.0112, and the style signal returned 0.45. The combined score was 0.2745, causing the system to label the input as human-written even though it contained no meaningful writing.
+
+### MF05 — A single long word classified as AI
+
+**Stage:** Route validation and model signal.
+
+**Mechanism:** The route accepted a single extremely long word as valid text. The model signal returned 0.9976, while the style signal returned 0.75. Their combined score was 0.8490, producing a high-confidence AI label.
+
+This demonstrates that my system can make confident authorship predictions for inputs that do not contain enough meaningful language to support such a conclusion.
+
+### Overall pattern
+
+The most common problem is that my detector relies on statistical writing characteristics rather than actual evidence of authorship. Human and AI writing can have overlapping scores, while changes in wording, sentence structure, and punctuation can influence the signals.
+
+My disagreement cap helps protect genuine writers from false accusations, but it also contributes to missed AI detections. The malformed-input failures reveal another weakness: my validation checks the type and length of submitted text without verifying that it contains meaningful language.
+
+These failures suggest that the system needs better handling of unreliable input and greater caution before returning confident authorship labels.
+
+### Criteria that met their targets
+
+**Criterion 1 — MET:** Only one of my ten human-written samples received an AI label in each trial, meeting my maximum of one false positive per ten samples. However, most other samples received `unsure` rather than `human`.
+
+**Criterion 3 — MET:** All three predetermined samples received distinct labels (`human`, `unsure`, and `ai`) in all three trials.
+
+**Criterion 4 — MET:** All five valid appeals returned HTTP 200 with `under_review` and appeared in the audit log. The nonexistent content ID returned HTTP 404 without creating an appeal entry in all three trials.
+
+**Criterion 5 — MET:** All seven malformed-input cases returned their expected HTTP error codes, and the health endpoint continued returning HTTP 200 afterward in every trial.
 
 ---
 

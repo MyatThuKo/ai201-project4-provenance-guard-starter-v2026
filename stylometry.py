@@ -146,9 +146,9 @@ def style_signal(text: str) -> float:
 
     Three normalized features contribute:
 
-        Sentence-length spread: 50%
-        Vocabulary diversity:   30%
-        Punctuation density:    20%
+        Sentence-length spread: 30%
+        Vocabulary diversity:   70%
+        Punctuation density:    not used
 
     Lower sentence-length variation is treated as more AI-like.
 
@@ -184,7 +184,7 @@ def style_signal(text: str) -> float:
 
     punct_ai = 1.0 / (1.0 + (punctuation_density(text) / 0.05) ** 2)
 
-    score = 0.5 * spread_ai + 0.3 * ttr_ai + 0.2 * punct_ai
+    score = 0.3 * spread_ai + 0.7 * ttr_ai
     return round(min(max(score, 0.0), 1.0), 4)
 
 

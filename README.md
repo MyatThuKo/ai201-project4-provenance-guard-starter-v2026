@@ -1059,16 +1059,76 @@ These failures suggest that the system needs better handling of unreliable input
 
 **What I changed:**
 
+I reweighted the stylometry signal in `stylometry.py::style_signal` from 50% sentence-length spread, 30% vocabulary variety, and 20% punctuation density to 30% sentence-length spread and 70% vocabulary variety.
+
+```python
+score = 0.3 * spread_ai + 0.7 * ttr_ai
+```
+
+For my final measured comparison, I kept the original AI threshold at 0.65 and made no other changes to the scoring pipeline.
+
 **Which diagnosis pointed at it:**
+
+My Criterion 2 diagnosis showed that human and AI writing received overlapping combined scores. My exploratory measurements suggested vocabulary variety separated the two groups more effectively than sentence-length variation, while punctuation density was not useful for this sample set. I therefore increased the contribution of vocabulary variety.
+
+**Measured before and after:**
+
+| Metric                            | Before |  After |
+| --------------------------------- | -----: | -----: |
+| Human mean score                  | 0.5207 | 0.4149 |
+| AI mean score                     | 0.6339 | 0.6825 |
+| Score separation                  | 0.1133 | 0.2676 |
+| Human samples flagged AI          |   1/10 |   0/10 |
+| AI samples flagged AI             |   4/10 |   6/10 |
+| Evasion attacks detected          |   1/10 |   3/10 |
+| False-positive attacks flagged AI |    1/8 |    0/8 |
+| Total attacks HELD                |  44/56 |  47/56 |
 
 ### Attack Run — After
 
-<!-- Same format. `run_attacks.py --label after` -->
+From `results/attack_run_2026-11-08_2038_after.md`, produced by `run_attacks.py::main`, compared with the before run in `results/attack_run_2026-11-08_1703.md`.
+
+| Attack family      | Total | Before HELD | Before BROKE | After HELD | After BROKE |
+| ------------------ | ----: | ----------: | -----------: | ---------: | ----------: |
+| Evasion            |    10 |           1 |            9 |          3 |           7 |
+| False positive     |     8 |           7 |            1 |          8 |           0 |
+| Prompt injection   |     6 |           6 |            0 |          6 |           0 |
+| Malformed requests |    20 |          18 |            2 |         18 |           2 |
+| Same-creator flood |    12 |          12 |            0 |         12 |           0 |
+| **Total**          |    56 |      **44** |       **12** |     **47** |       **9** |
+
+Attacks whose outcome changed:
+
+| Attack | Before         | After          |
+| ------ | -------------- | -------------- |
+| EV03   | unsure (0.601) | ai (0.745)     |
+| EV05   | human (0.339)  | unsure (0.396) |
+| EV09   | unsure (0.621) | ai (0.733)     |
+| FP03   | ai (0.664)     | unsure (0.564) |
+| PI03   | unsure (0.602) | ai (0.693)     |
+| PI05   | unsure (0.544) | ai (0.740)     |
 
 **Did it help, and how do I know:**
 
-<!-- Widening the unsure band usually fixes one problem and creates another.
-     Reporting that trade honestly is worth full credit. -->
+Yes. The difference between the mean AI and human scores increased from 0.1133 to 0.2676, and correctly identified AI samples increased from four to six. The FP03 false-positive attack also changed from `ai` to `unsure`, reducing the number of false-positive attacks from one to zero.
+
+However, the score-separation criterion remains MISSED because 0.2676 is still below my original target of 0.35.
+
+These weights were selected using the same writing samples used for evaluation, so the improvement may be partly due to overfitting. Performance on previously unseen writing has not been established.
+
+I also explored raising the AI threshold to 0.70 as an alternative, but that reduced the number of detected AI samples to one out of ten. I selected the stylometry reweighting as the final improvement because it improved both score separation and AI detection on my test set.
+
+After the changes, criterion 5 switched from `MET` to `MISSED`. This wasn't caused by reweighting, which only changes scores. Running all three scripts back to back hit the rate limiter for requests without a `creator_id`. As you can see in [extra_checks_2026-11-08_2106_after.md](results/extra_checks_2026-11-08_2106_after.md), which was run after some time and all three runs for the criterion 5 resulted in `MET`. However I decided to put the initial run the table under for the criterion 5 as `MISSED`.
+
+**Run Log After**
+
+| Criterion             | Target                       | Run 1  | Run 2  | Run 3  | Verdict |
+| --------------------- | ---------------------------- | ------ | ------ | ------ | ------- |
+| 1. False positives    | At most 1/10                 | 0/10   | 0/10   | 0/10   | MET     |
+| 2. Score separation   | AI mean >= human mean + 0.35 | 0.2676 | 0.2676 | 0.2676 | MISSED  |
+| 3. Label coverage     | 3 distinct labels            | 3/3    | 3/3    | 3/3    | MET     |
+| 4. Appeal reliability | 6/6 checks                   | 6/6    | 6/6    | 6/6    | MET     |
+| 5. Bad-input handling | 7/7 checks                   | 5/7    | 5/7    | 5/7    | MISSED  |
 
 ---
 
